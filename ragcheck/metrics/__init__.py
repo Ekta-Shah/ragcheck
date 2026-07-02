@@ -13,6 +13,8 @@ from ragcheck.metrics.retrieval.context_precision import ContextPrecision
 from ragcheck.metrics.retrieval.context_recall import ContextRecall
 from ragcheck.metrics.retrieval.hit_rate import HitRate
 from ragcheck.metrics.retrieval.mrr import MRR
+from ragcheck.metrics.robustness.paraphrase_consistency import ParaphraseConsistency
+from ragcheck.metrics.robustness.refusal_calibration import RefusalCalibration
 
 __all__ = [
     "MRR",
@@ -24,6 +26,8 @@ __all__ = [
     "HitRate",
     "Metric",
     "MetricResult",
+    "ParaphraseConsistency",
+    "RefusalCalibration",
     "build_metric",
 ]
 
@@ -34,6 +38,8 @@ _LLM_JUDGED: dict[str, Callable[..., Metric]] = {
     "context_recall": ContextRecall,
     "answer_relevance": AnswerRelevance,
     "citation_accuracy": CitationAccuracy,
+    "refusal_calibration": RefusalCalibration,
+    "paraphrase_consistency": ParaphraseConsistency,
 }
 
 
