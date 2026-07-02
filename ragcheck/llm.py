@@ -150,7 +150,7 @@ class GroqClient:
                         with contextlib.suppress(ValueError):
                             delay = min(float(retry_after) + random.random(), 120.0)
                 last_error = httpx.HTTPStatusError(
-                    f"Groq returned {response.status_code}",
+                    f"Groq returned {response.status_code}: {response.text[:300]}",
                     request=response.request,
                     response=response,
                 )
@@ -169,7 +169,12 @@ def build_client(provider: str, model: str | None = None) -> LLMClient:
 
 
 def default_client(model: str | None = None) -> LLMClient:
-    """Pick a provider from the environment: Anthropic if its key is set, else Groq."""
+    """Pick a provider from the environment: Anthropic if its key is set, else Groq.
+
+    ``RAGCHECK_MODEL`` overrides the provider's default model when ``model``
+    is not given (useful when a free-tier model's daily budget is exhausted).
+    """
+    model = model or os.environ.get("RAGCHECK_MODEL")
     if os.environ.get("ANTHROPIC_API_KEY"):
         return build_client("anthropic", model)
     if os.environ.get("GROQ_API_KEY"):

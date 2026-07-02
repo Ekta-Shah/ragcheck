@@ -3,7 +3,9 @@ adapter: examples.toy_pipeline:build_adapter
 metrics:
   - name: hit_rate
     params: { k: 3 }
+  - mrr
   - faithfulness
+  - answer_relevance
 judge_provider: groq
 judge_model: llama-3.3-70b-versatile
 output_dir: ../ragcheck_output

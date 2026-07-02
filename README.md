@@ -35,7 +35,7 @@ On re-run, unchanged answers are judged from cache (23/26 hits above — the mis
 
 Existing tools score your pipeline with an LLM judge and stop there. RAGCheck is built around the questions that actually block shipping:
 
-- **Can you trust the judge?** A judge-validation module measures LLM-judge vs. human agreement (Cohen's kappa) *before* you trust judged metrics.
+- **Can you trust the judge?** `ragcheck validate-judge labels.jsonl --metric faithfulness` measures LLM-judge vs. human agreement (Cohen's kappa + confusion matrix) *before* you trust judged metrics. On our sample labels it caught a real miscalibration: the default pass threshold scored κ=0.40, and the fix (threshold 1.0) scores κ=1.00 — the module tells you your judge's safe operating point.
 - **Does your system know when to say "I don't know"?** Refusal calibration tests behavior on unanswerable questions.
 - **Is it robust?** Paraphrase-consistency scoring catches pipelines that only work on one phrasing.
 - **What does quality cost?** Cost-quality frontier across pipeline configurations.
@@ -89,14 +89,14 @@ Then `ragcheck run config.yaml`. Every LLM judgment is cached in SQLite (keyed o
 | Area | Status |
 |---|---|
 | Adapter interface (`RAGAdapter`, `FunctionAdapter`) | ✅ done |
-| `hit_rate@k` (deterministic) | ✅ done |
-| `faithfulness` (claim decomposition + verification, LLM-judged) | ✅ done |
+| Retrieval metrics: `hit_rate@k`, `mrr` (deterministic), `context_precision`, `context_recall` (LLM-judged) | ✅ done |
+| Generation metrics: `faithfulness`, `answer_relevance`, `citation_accuracy` (LLM-judged) | ✅ done |
+| **Judge validation**: `ragcheck validate-judge` — Cohen's kappa + confusion matrix vs. human labels | ✅ done |
+| Parallel judging (configurable concurrency, thread-safe cache, rate-limit backoff) | ✅ done |
 | SQLite judgment cache + prompt versioning | ✅ done |
 | Judge providers: Anthropic (Claude) + Groq (open-weight Llama) | ✅ done |
 | Early architecture benchmark: naive vs. hybrid RAG on SEC 10-Ks ([results](benchmarks/README.md)) | ✅ rough cut |
 | CLI (`ragcheck run`) + JSON report + terminal scorecard | ✅ done |
-| MRR, context precision/recall, answer relevance, citation accuracy | 🔜 planned |
-| Judge validation (Cohen's kappa vs. human labels) | 🔜 planned |
 | Refusal calibration + paraphrase consistency | 🔜 planned |
 | Synthetic dataset generation from any corpus | 🔜 planned |
 | Full benchmark: + reranked & agentic RAG, 300-500 samples, cost-quality frontier | 🔜 planned |

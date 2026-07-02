@@ -3,7 +3,9 @@ adapter: examples.toy_pipeline:build_adapter
 metrics:
   - name: hit_rate
     params: { k: 3 }
+  - mrr
   - faithfulness
+  - answer_relevance
 judge_provider: anthropic
 judge_model: claude-opus-4-8
 output_dir: ../ragcheck_output
