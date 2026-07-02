@@ -2,7 +2,7 @@
 
 Reproducible comparison of RAG retrieval architectures on a financial-filings corpus. Everything except the retrieval strategy is held constant: same chunking (1200 chars, 200 overlap), same embedding model (`all-MiniLM-L6-v2`), same generator model and prompt.
 
-> **Status: rough early cut.** This is the plan's "demoable benchmark early" checkpoint - 2 of 4 pipelines, 16 auto-generated QA pairs, 2 metrics. The full version (4 pipelines, 300-500 samples across difficulty tiers, unanswerables, paraphrase groups, cost-quality frontier chart) lands after the full metric suite and synthetic dataset generator are built.
+> **Status: harness complete, full run pending.** All 4 pipelines and the full 9-metric suite run end-to-end (validated on a small subset). The headline full run (300-500 samples across difficulty tiers, unanswerables, paraphrase groups) needs a funded API budget and will replace the early results below.
 
 ## Pipelines
 
@@ -10,28 +10,31 @@ Reproducible comparison of RAG retrieval architectures on a financial-filings co
 |---|---|
 | `naive_rag` | Dense (MiniLM cosine) top-5 |
 | `hybrid_rag` | BM25 + dense top-20 each, reciprocal rank fusion (k=60), top-5 |
-| `reranked_rag` | 🔜 dense top-20 → cross-encoder rerank → top-5 |
-| `agentic_rag` | 🔜 LLM query decomposition → iterative retrieval (max 3 rounds) |
+| `reranked_rag` | Dense top-20 → cross-encoder (`ms-marco-MiniLM-L-6-v2`) rerank → top-5 |
+| `agentic_rag` | LLM query decomposition → iterative dense retrieval (max 3 rounds) → synthesis |
 
-Generator/judge: `meta-llama/llama-4-scout-17b-16e-instruct` via Groq (temperature 0), selected with `RAGCHECK_BENCH_MODEL`.
+All four share the same chunking, embeddings, generator model, and generation prompt (which requires `[source_id]` citations) - the retrieval strategy is the only variable. Agentic's decomposition/sufficiency LLM calls are charged to its cost per query. Generator/judge models are selected with `RAGCHECK_BENCH_MODEL` / `RAGCHECK_JUDGE_MODEL`.
 
 ## Corpus
 
-Latest 10-K filings of Apple, Microsoft, and NVIDIA, fetched from SEC EDGAR and converted to plain text (~900 KB, ~1,100 chunks). Raw data is gitignored; the fetch script is deterministic.
+Latest 10-K filings of Apple, Microsoft, NVIDIA, Alphabet, Amazon, Meta, Tesla, and JPMorgan, fetched from SEC EDGAR and converted to plain text (~3.8 MB). Raw data is gitignored; the fetch script is deterministic.
 
 ## Reproduce
 
 ```bash
-pip install -e . sentence-transformers rank_bm25
+pip install -e ".[benchmarks]"
 export GROQ_API_KEY=...
 export RAGCHECK_BENCH_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
-python benchmarks/corpus/fetch_corpus.py     # ~1 MB from EDGAR
-python benchmarks/run_benchmark.py           # or --quick for 8 samples
+python benchmarks/corpus/fetch_corpus.py                    # ~4 MB from EDGAR
+ragcheck generate-dataset benchmarks/corpus/data --n 400 \
+  --paraphrase-groups 20 --out benchmarks/synthetic_dataset.jsonl \
+  --provider groq --model $RAGCHECK_BENCH_MODEL             # resumable
+python benchmarks/run_benchmark.py                          # full; --quick for 20 samples
 ```
 
-The committed `benchmark_dataset.jsonl` reproduces these numbers; regenerate it with `python benchmarks/generate_qa.py --n 16` after re-fetching the corpus. Per-pipeline JSON reports land in `benchmarks/results/`.
+Outputs land in `benchmarks/results/`: per-pipeline JSON reports, `comparison.json`/`comparison.md`, and `cost_quality_frontier.png` (cost/query vs. faithfulness). `--pipelines`, `--metrics`, and `--n` subset a run for cheap smoke tests.
 
-## Results (16 samples, 2026-07-02)
+## Early results (2 pipelines, 16 samples, 2026-07-02)
 
 | Pipeline | hit_rate@5 | faithfulness | tokens/query | retrieval p50 (ms) |
 |---|---:|---:|---:|---:|

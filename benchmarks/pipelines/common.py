@@ -24,7 +24,7 @@ TOP_K = 5
 
 GENERATION_PROMPT = """Answer the question using ONLY the provided documents.
 If the documents do not contain the answer, say "The provided documents do not contain this information."
-Keep the answer to one or two sentences.
+Keep the answer to one or two sentences. After each factual statement, cite the id of the document it came from in square brackets, e.g. [AAPL_10K_0042].
 
 Documents:
 {context}

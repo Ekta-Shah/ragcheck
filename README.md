@@ -98,9 +98,9 @@ Then `ragcheck run config.yaml`. Every LLM judgment is cached in SQLite (keyed o
 | Judge providers: Anthropic (Claude) + Groq (open-weight Llama) | ✅ done |
 | Robustness metrics: `refusal_calibration` (false-answer + over-refusal rates), `paraphrase_consistency` | ✅ done |
 | Synthetic datasets: `ragcheck generate-dataset` — difficulty tiers, unanswerables, paraphrase groups, resumable | ✅ done |
-| Early architecture benchmark: naive vs. hybrid RAG on SEC 10-Ks ([results](benchmarks/README.md)) | ✅ rough cut |
+| Benchmark harness: 4 architectures (naive/hybrid/reranked/agentic), 9 metrics, cost-quality frontier ([methodology](benchmarks/README.md)) | ✅ done |
 | CLI (`ragcheck run`) + JSON report + terminal scorecard | ✅ done |
-| Full benchmark: + reranked & agentic RAG, 300-500 samples, cost-quality frontier | 🔜 planned |
+| Full benchmark run (300-500 samples) - awaiting funded API budget | 🔜 next |
 | HTML report, regression diffing, PyPI release | 🔜 planned |
 
 ## Development

@@ -26,6 +26,11 @@ dev = [
     "mypy>=1.10",
     "types-PyYAML",
 ]
+benchmarks = [
+    "sentence-transformers>=3.0",
+    "rank_bm25>=0.2",
+    "matplotlib>=3.8",
+]
 
 [project.scripts]
 ragcheck = "ragcheck.cli:app"
