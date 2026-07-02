@@ -1,11 +1,15 @@
 # RAGCheck
 
-**pytest for RAG systems.** Wrap your retrieval-augmented generation pipeline in a one-method adapter and get quality scores, a failure taxonomy, cost/latency profiles, and CI-friendly regression checks.
+[![CI](https://github.com/Ekta-Shah/ragcheck/actions/workflows/ci.yaml/badge.svg)](https://github.com/Ekta-Shah/ragcheck/actions/workflows/ci.yaml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+
+**pytest for RAG systems.** Wrap your retrieval-augmented generation pipeline in a one-method adapter and get quality scores, a failure taxonomy, cost/latency profiles, and CI-friendly regression checks — with a judge you can actually verify.
 
 ```bash
-pip install -e .
-export ANTHROPIC_API_KEY=sk-ant-...   # or GROQ_API_KEY for open-weight judges
-ragcheck run examples/toy_config.yaml # or examples/toy_config_groq.yaml
+pip install ragcheck-eval            # imports and CLI are `ragcheck`
+export ANTHROPIC_API_KEY=sk-ant-...  # or GROQ_API_KEY for open-weight judges
+ragcheck run examples/toy_config.yaml
 ```
 
 Real output from the bundled toy pipeline (keyword retrieval over a 10-doc corpus):
@@ -18,40 +22,36 @@ Real output from the bundled toy pipeline (keyword retrieval over a 10-doc corpu
 │ hit_rate@3   │ 1.000 │      10 │ -                            │
 │ faithfulness │ 1.000 │      10 │ llama-3.3-70b-versatile (v1) │
 └──────────────┴───────┴─────────┴──────────────────────────────┘
-       Latency (ms)
-┏━━━━━━━━━━━━┳━━━━━┳━━━━━┓
-┃ Stage      ┃ p50 ┃ p95 ┃
-┡━━━━━━━━━━━━╇━━━━━╇━━━━━┩
-│ generation │ 378 │ 891 │
-│ retrieval  │   0 │   0 │
-└────────────┴─────┴─────┘
 pipeline tokens: {'input_tokens': 1410, 'output_tokens': 184}  |
 judge tokens: {'input_tokens': 4338, 'output_tokens': 274}  |  cache: 0 hits / 26 misses
 ```
 
-On re-run, unchanged answers are judged from cache (23/26 hits above — the misses were answers the pipeline re-phrased, which correctly re-judge).
+Alongside the terminal scorecard you get a JSON report and a **self-contained HTML report** — scorecard, judge-validation status, latency/cost, and the worst-failing samples with question, answer, and retrieved context inline.
 
 ## Why another RAG eval tool?
 
 Existing tools score your pipeline with an LLM judge and stop there. RAGCheck is built around the questions that actually block shipping:
 
-- **Can you trust the judge?** `ragcheck validate-judge labels.jsonl --metric faithfulness` measures LLM-judge vs. human agreement (Cohen's kappa + confusion matrix) *before* you trust judged metrics. On our sample labels it caught a real miscalibration: the default pass threshold scored κ=0.40, and the fix (threshold 1.0) scores κ=1.00 — the module tells you your judge's safe operating point.
+- **Can you trust the judge?** `ragcheck validate-judge labels.jsonl --metric faithfulness` measures LLM-judge vs. human agreement (Cohen's kappa + confusion matrix) *before* you trust judged metrics. On our own labels it caught a real miscalibration: the default pass threshold scored κ=0.40; the corrected threshold scores κ=1.00. Reports display "validated at κ=0.XX" — or a visible "not validated" flag.
 - **Does your system know when to say "I don't know"?** `refusal_calibration` reports the false-answer rate (hallucinated answers to unanswerable questions) and over-refusal rate separately.
 - **Is it robust?** `paraphrase_consistency` judges pairwise answer agreement within paraphrase groups — catching pipelines that only work on one phrasing.
-- **No eval set?** `ragcheck generate-dataset corpus_dir/` builds one from your documents: easy/medium/hard tiers, unanswerable questions, paraphrase groups, full chunk-level provenance. Generation is cached, so interrupted runs resume for free.
-- **What does quality cost?** Cost-quality frontier across pipeline configurations.
-- **Did this PR make it worse?** Report diffing with thresholds and non-zero exit codes for CI.
+- **No eval set?** `ragcheck generate-dataset corpus_dir/` builds one from your documents: easy/medium/hard tiers, unanswerable questions, paraphrase groups, chunk-level provenance. Cached and resumable.
+- **What does quality cost?** The benchmark harness produces a cost-quality frontier across architectures.
+- **Did this PR make it worse?** `ragcheck compare old.json new.json --fail-if "faithfulness<-0.05"` exits non-zero on regression and prints a markdown diff for PR comments.
 
-## Early benchmark result
+## Compared to existing tools
 
-Same corpus (3 SEC 10-Ks), same chunking, same generator — only retrieval varies:
+| Capability | RAGCheck | RAGAS | DeepEval | TruLens |
+|---|:---:|:---:|:---:|:---:|
+| Core RAG metrics (faithfulness, context precision/recall, relevance) | ✅ | ✅ | ✅ | ✅ |
+| Built-in judge validation vs. human labels (Cohen's κ) | ✅ | ❌ | ❌ | ❌ |
+| Refusal calibration (false-answer + over-refusal rates) | ✅ | ❌ | ❌ | ❌ |
+| Paraphrase-consistency robustness testing | ✅ | ❌ | ❌ | ❌ |
+| Persistent judgment cache keyed on judge model + prompt version | ✅ | ❌ | partial | ❌ |
+| Report diffing with CI exit codes | ✅ | ❌ | ✅ | ❌ |
+| Runs entirely local — no dashboard, account, or service | ✅ | ✅ | partial | partial |
 
-| Pipeline | hit_rate@5 | faithfulness | tokens/query |
-|---|---:|---:|---:|
-| naive (dense) | 0.438 | 1.000 | 1666 |
-| hybrid (BM25 + dense, RRF) | **0.750** | 0.948 | 1555 |
-
-16 samples — directional, not definitive. Methodology, reproduction commands, and honest limitations in [benchmarks/](benchmarks/README.md).
+*Comparison reflects our reading of each tool's docs at the time of writing; corrections welcome via issues.*
 
 ## How it works
 
@@ -72,36 +72,50 @@ def my_pipeline(question: str) -> RAGResponse:
 adapter = FunctionAdapter(my_pipeline)
 ```
 
-Point a YAML config at your adapter, dataset, and metrics:
+LangChain users: `LangChainAdapter(retriever, chain)` wraps a retriever + chain directly.
 
-```yaml
-dataset: eval_set.jsonl
-adapter: my_project.pipeline:adapter
-metrics:
-  - name: hit_rate
-    params: { k: 5 }
-  - faithfulness
-```
+Point a YAML config at your adapter, dataset, and metrics, then `ragcheck run config.yaml`. Every LLM judgment is cached in SQLite (keyed on judge model, prompt version, and inputs) so re-runs on unchanged data are free — and every judged result records exactly which judge and prompt produced it.
 
-Then `ragcheck run config.yaml`. Every LLM judgment is cached in SQLite (keyed on metric, prompt version, and inputs), so re-runs on unchanged data are free and fast. Every judged result records the judge model and prompt version.
+## Benchmark: which RAG architecture?
 
-## Status: early and honest about it
+Four pipelines — naive dense, hybrid (BM25+dense RRF), cross-encoder reranked, and agentic (query decomposition) — on 8 SEC 10-K filings, identical chunking/generator, retrieval as the only variable. Early 16-sample result (full 300-500 sample run landing shortly):
+
+| Pipeline | hit_rate@5 | faithfulness | tokens/query |
+|---|---:|---:|---:|
+| naive (dense) | 0.438 | 1.000 | 1666 |
+| hybrid (BM25 + dense, RRF) | **0.750** | 0.948 | 1555 |
+
+Methodology, reproduction commands, and honest limitations: [benchmarks/](benchmarks/README.md).
+
+## Design decisions
+
+- **Judge validation is a feature, not a footnote.** Judged metrics are untrustworthy by default; the κ workflow makes trust measurable, and reports flag unvalidated judges.
+- **Deterministic first.** Where a metric can be computed without an LLM (hit_rate, MRR), it is. LLM judging is reserved for what actually needs it.
+- **Everything cached, everything versioned.** Judgments are cached on (judge model, prompt version, inputs); prompts live as versioned markdown. Interrupted dataset generation resumes for free; changing a prompt never silently reuses stale verdicts.
+- **CI is the target environment.** JSON reports, exit codes, markdown diffs, an env-gated smoke workflow, and a cost guard (`--yes` required above a configurable sample count).
+- **No UI.** The self-contained HTML report is the only visual output. No dashboard, no server, no account.
+
+## Docs
+
+[Quickstart](docs/quickstart.md) · [Metrics reference](docs/metrics.md) · [Judge validation](docs/judge-validation.md) · [CI integration](docs/ci-integration.md)
+
+## Status
 
 | Area | Status |
 |---|---|
-| Adapter interface (`RAGAdapter`, `FunctionAdapter`) | ✅ done |
-| Retrieval metrics: `hit_rate@k`, `mrr` (deterministic), `context_precision`, `context_recall` (LLM-judged) | ✅ done |
-| Generation metrics: `faithfulness`, `answer_relevance`, `citation_accuracy` (LLM-judged) | ✅ done |
-| **Judge validation**: `ragcheck validate-judge` — Cohen's kappa + confusion matrix vs. human labels | ✅ done |
-| Parallel judging (configurable concurrency, thread-safe cache, rate-limit backoff) | ✅ done |
-| SQLite judgment cache + prompt versioning | ✅ done |
-| Judge providers: Anthropic (Claude) + Groq (open-weight Llama) | ✅ done |
-| Robustness metrics: `refusal_calibration` (false-answer + over-refusal rates), `paraphrase_consistency` | ✅ done |
-| Synthetic datasets: `ragcheck generate-dataset` — difficulty tiers, unanswerables, paraphrase groups, resumable | ✅ done |
-| Benchmark harness: 4 architectures (naive/hybrid/reranked/agentic), 9 metrics, cost-quality frontier ([methodology](benchmarks/README.md)) | ✅ done |
-| CLI (`ragcheck run`) + JSON report + terminal scorecard | ✅ done |
-| Full benchmark run (300-500 samples) - awaiting funded API budget | 🔜 next |
-| HTML report, regression diffing, PyPI release | 🔜 planned |
+| Adapters: `FunctionAdapter`, `LangChainAdapter` | ✅ |
+| 9 metrics: retrieval (4) · generation (3) · robustness (2) | ✅ |
+| Judge validation (`validate-judge`, Cohen's κ) | ✅ |
+| Synthetic datasets (`generate-dataset`) | ✅ |
+| JSON + self-contained HTML reports | ✅ |
+| Regression diffing (`compare --fail-if`) | ✅ |
+| CI workflows (lint/type/test + env-gated live smoke eval) | ✅ |
+| 4-architecture benchmark harness | ✅ |
+| Full benchmark run (300-500 samples) | 🔜 imminent |
+| PyPI release (`ragcheck-eval` 0.1.0) | 🔜 with benchmark results |
+| LlamaIndex/Haystack adapters | ❌ not in v0.1 (issues welcome) |
+
+Explicit non-goals: web UI/dashboards, hosted services, fine-tuning or embedding-model evaluation.
 
 ## Development
 
@@ -111,6 +125,8 @@ pytest            # unit tests (no API calls - judges are mocked)
 ruff check .
 mypy ragcheck/
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
