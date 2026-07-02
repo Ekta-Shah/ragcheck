@@ -1,0 +1,51 @@
+# Live smoke eval on merges to main: runs the toy example against a real judge
+# and regression-checks it against the committed baseline (dogfooding
+# `ragcheck compare`). Skips gracefully when no API key secret is configured.
+name: smoke-eval
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      RAGCHECK_MODEL: ${{ vars.RAGCHECK_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for API key
+        id: gate
+        run: |
+          if [ -n "$GROQ_API_KEY" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No GROQ_API_KEY secret configured - skipping live smoke eval."
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.run == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Run toy eval
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          pip install -e .
+          ragcheck run examples/toy_config_groq.yaml --yes
+      - name: Regression check against baseline
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          if [ -f examples/smoke_baseline.json ]; then
+            ragcheck compare examples/smoke_baseline.json ragcheck_output/toy-demo-groq.json \
+              --fail-if "faithfulness<-0.1" --fail-if "hit_rate@3<-0.1"
+          else
+            echo "No baseline committed yet - skipping compare."
+          fi
+      - name: Upload report
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-report
+          path: ragcheck_output/
