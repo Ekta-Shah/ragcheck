@@ -7,7 +7,7 @@ import re
 
 from ragcheck.datasets.models import EvalSample
 from ragcheck.judge.judge import Judge, load_prompt
-from ragcheck.metrics.base import Metric, MetricResult
+from ragcheck.metrics.base import Metric, MetricResult, parallel_map
 
 
 class Faithfulness(Metric):
@@ -22,37 +22,19 @@ class Faithfulness(Metric):
     name = "faithfulness"
     requires_llm = True
 
-    def __init__(self, judge: Judge) -> None:
+    def __init__(self, judge: Judge, concurrency: int = 1) -> None:
         """Bind the shared judge and load the versioned prompt pair."""
         self.judge = judge
+        self.concurrency = concurrency
         self.decompose_prompt = load_prompt("faithfulness_decompose")
         self.verify_prompt = load_prompt("faithfulness_verify")
 
     def compute(self, samples: list[EvalSample]) -> MetricResult:
         """Score every sample and collect unsupported claims in details."""
-        per_sample: list[float] = []
-        failed_claims: list[dict[str, str]] = []
-        no_claim_samples = 0
-
-        for sample in samples:
-            question = sample.qa.question
-            answer = sample.response.answer
-            context = "\n\n".join(
-                f"[{c.source_id}] {c.content}" for c in sample.response.retrieved_chunks
-            )
-            claims = self._decompose(question, answer)
-            if not claims:
-                no_claim_samples += 1
-                per_sample.append(1.0)
-                continue
-            supported = 0
-            for claim in claims:
-                if self._verify(question, context, claim):
-                    supported += 1
-                else:
-                    failed_claims.append({"question": question, "claim": claim})
-            per_sample.append(supported / len(claims))
-
+        outcomes = parallel_map(self._score_sample, samples, self.concurrency)
+        per_sample = [score for score, _, _ in outcomes]
+        failed_claims = [f for _, failures, _ in outcomes for f in failures]
+        no_claim_samples = sum(1 for _, _, no_claims in outcomes if no_claims)
         score = sum(per_sample) / len(per_sample) if per_sample else 0.0
         return MetricResult(
             metric_name=self.name,
@@ -62,6 +44,24 @@ class Faithfulness(Metric):
             judge_model=self.judge.model,
             prompt_version=self.decompose_prompt.version,
         )
+
+    def _score_sample(self, sample: EvalSample) -> tuple[float, list[dict[str, str]], bool]:
+        question = sample.qa.question
+        answer = sample.response.answer
+        context = "\n\n".join(
+            f"[{c.source_id}] {c.content}" for c in sample.response.retrieved_chunks
+        )
+        claims = self._decompose(question, answer)
+        if not claims:
+            return 1.0, [], True
+        failures: list[dict[str, str]] = []
+        supported = 0
+        for claim in claims:
+            if self._verify(question, context, claim):
+                supported += 1
+            else:
+                failures.append({"question": question, "claim": claim})
+        return supported / len(claims), failures, False
 
     def _decompose(self, question: str, answer: str) -> list[str]:
         raw = self.judge.ask(

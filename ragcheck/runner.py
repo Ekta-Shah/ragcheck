@@ -78,7 +78,10 @@ def evaluate(
         judge = Judge(llm, cache)
 
     results = [
-        build_metric(spec.name, spec.params, judge).compute(samples) for spec in config.metrics
+        build_metric(spec.name, spec.params, judge, concurrency=config.concurrency).compute(
+            samples
+        )
+        for spec in config.metrics
     ]
 
     pipeline_tokens: dict[str, int] = defaultdict(int)

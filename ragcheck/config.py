@@ -23,6 +23,7 @@ class EvalConfig(BaseModel):
     metrics: list[MetricSpec]
     judge_provider: str = "anthropic"
     judge_model: str | None = None
+    concurrency: int = 4
     output_dir: Path = Path("ragcheck_output")
     cache_path: Path = Path(".ragcheck_cache.sqlite")
     run_name: str | None = None
