@@ -82,7 +82,7 @@ class Judge:
         **fields: str,
     ) -> str:
         """Render ``prompt`` with ``fields`` and return the (possibly cached) verdict."""
-        key = make_key(metric_name, prompt.version, prompt.name, *key_parts)
+        key = make_key(self.model, metric_name, prompt.version, prompt.name, *key_parts)
         if self.cache is not None:
             cached = self.cache.get(key)
             if cached is not None:

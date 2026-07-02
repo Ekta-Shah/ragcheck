@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 import random
 import time
@@ -86,7 +87,7 @@ class GroqClient:
     def __init__(
         self,
         model: str = DEFAULT_GROQ_MODEL,
-        max_retries: int = 4,
+        max_retries: int = 8,
         http_client: httpx.Client | None = None,
     ) -> None:
         """Create a client for ``model``; ``http_client`` is injectable for tests."""
@@ -130,6 +131,7 @@ class GroqClient:
     def _post_with_retry(self, payload: dict) -> dict:
         last_error: Exception | None = None
         for attempt in range(self._max_retries + 1):
+            delay = min(2**attempt + random.random(), 30.0)
             try:
                 response = self._http.post(
                     f"{GROQ_BASE_URL}/chat/completions", json=payload, headers=self._headers
@@ -141,13 +143,19 @@ class GroqClient:
                     return dict(response.json())
                 if response.status_code not in (429,) and response.status_code < 500:
                     response.raise_for_status()
+                if response.status_code == 429:
+                    # Groq's retry-after reflects the TPM window; trust it over backoff.
+                    retry_after = response.headers.get("retry-after")
+                    if retry_after is not None:
+                        with contextlib.suppress(ValueError):
+                            delay = min(float(retry_after) + random.random(), 120.0)
                 last_error = httpx.HTTPStatusError(
                     f"Groq returned {response.status_code}",
                     request=response.request,
                     response=response,
                 )
             if attempt < self._max_retries:
-                time.sleep(min(2**attempt + random.random(), 30.0))
+                time.sleep(delay)
         raise last_error if last_error else RuntimeError("Groq request failed")
 
 

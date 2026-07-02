@@ -12,7 +12,7 @@ from ragcheck.adapters.base import RAGAdapter
 from ragcheck.cache import JudgmentCache
 from ragcheck.config import EvalConfig
 from ragcheck.datasets.loaders import load_dataset
-from ragcheck.datasets.models import EvalSample
+from ragcheck.datasets.models import EvalDataset, EvalSample
 from ragcheck.judge.judge import Judge
 from ragcheck.llm import LLMClient, build_client
 from ragcheck.metrics import _LLM_JUDGED, build_metric
@@ -46,7 +46,21 @@ def run_eval(config: EvalConfig) -> tuple[EvalReport, Path]:
     """Run the full eval described by ``config``; return the report and its path."""
     dataset = load_dataset(config.dataset)
     adapter = load_adapter(config.adapter)
+    return evaluate(adapter, dataset, config, adapter_name=config.adapter)
 
+
+def evaluate(
+    adapter: RAGAdapter,
+    dataset: EvalDataset,
+    config: EvalConfig,
+    *,
+    adapter_name: str,
+) -> tuple[EvalReport, Path]:
+    """Evaluate an already-constructed adapter (programmatic entry point).
+
+    ``config.dataset``/``config.adapter`` are ignored here; the caller supplies
+    both objects directly. Used by benchmarks and library consumers.
+    """
     responses = adapter.batch_query([qa.question for qa in dataset.pairs])
     samples = [
         EvalSample(qa=qa, response=r)
@@ -77,8 +91,8 @@ def run_eval(config: EvalConfig) -> tuple[EvalReport, Path]:
 
     report = EvalReport(
         run_name=config.run_name or f"run-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}",
-        dataset=str(config.dataset),
-        adapter=config.adapter,
+        dataset=dataset.name,
+        adapter=adapter_name,
         n_samples=len(samples),
         metrics=results,
         latency=[

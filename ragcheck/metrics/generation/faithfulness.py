@@ -82,7 +82,9 @@ class Faithfulness(Metric):
             context=context,
             claim=claim,
         )
-        return "UNSUPPORTED" not in raw.upper()
+        verdict = raw.upper()
+        # Conservative: an empty or malformed verdict counts as unsupported.
+        return "SUPPORTED" in verdict and "UNSUPPORTED" not in verdict
 
 
 def _parse_claims(raw: str) -> list[str]:
