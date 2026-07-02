@@ -23,12 +23,49 @@ def main() -> None:
 
 
 @app.command()
-def run(config: Path = typer.Argument(..., help="Path to an eval config YAML.")) -> None:
+def run(
+    config: Path = typer.Argument(..., help="Path to an eval config YAML."),
+    yes: bool = typer.Option(
+        False, "--yes", help="Proceed without confirmation on large LLM-judged runs."
+    ),
+) -> None:
     """Run an evaluation and print the scorecard."""
     eval_config = load_config(config)
+    if yes:
+        eval_config.assume_yes = True
     report, out_path = run_eval(eval_config)
     print_summary(report, console)
     console.print(f"[green]Report written to[/green] {out_path}")
+    if eval_config.html:
+        console.print(f"[green]HTML report:[/green] {out_path.with_suffix('.html')}")
+
+
+@app.command()
+def compare(
+    old: Path = typer.Argument(..., help="Baseline report JSON."),
+    new: Path = typer.Argument(..., help="New report JSON."),
+    fail_if: list[str] = typer.Option(
+        [],
+        "--fail-if",
+        help="Exit 1 when a metric's delta drops below a threshold, e.g. 'faithfulness<-0.05'. "
+        "Repeatable.",
+    ),
+) -> None:
+    """Diff two eval reports; non-zero exit on threshold breach (CI-friendly)."""
+    from ragcheck.report.regression import (
+        compare_reports,
+        load_report,
+        markdown_diff,
+        parse_fail_if,
+    )
+
+    diffs = compare_reports(load_report(old), load_report(new), parse_fail_if(fail_if))
+    console.print(markdown_diff(diffs, old.name, new.name))
+    breached = [d for d in diffs if d.breached]
+    if breached:
+        names = ", ".join(d.metric_name for d in breached)
+        console.print(f"\n[red]Regression threshold breached:[/red] {names}")
+        raise typer.Exit(code=1)
 
 
 @app.command("generate-dataset")
