@@ -4,20 +4,32 @@
 
 ```bash
 pip install -e .
-export ANTHROPIC_API_KEY=sk-ant-...
-ragcheck run examples/toy_config.yaml
+export ANTHROPIC_API_KEY=sk-ant-...   # or GROQ_API_KEY for open-weight judges
+ragcheck run examples/toy_config.yaml # or examples/toy_config_groq.yaml
 ```
 
+Real output from the bundled toy pipeline (keyword retrieval over a 10-doc corpus):
+
 ```text
-        RAGCheck - toy-demo
-┏━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Metric       ┃ Score ┃ Samples ┃ Judge                ┃
-┡━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
-│ hit_rate@3   │ 1.000 │      10 │ -                    │
-│ faithfulness │ 1.000 │      10 │ claude-opus-4-8 (v1) │
-└──────────────┴───────┴─────────┴──────────────────────┘
-cache: 0 hits / 32 misses   (re-run: 32 hits / 0 misses, near-instant)
+                    RAGCheck - toy-demo-groq
+┏━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Metric       ┃ Score ┃ Samples ┃ Judge                        ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ hit_rate@3   │ 1.000 │      10 │ -                            │
+│ faithfulness │ 1.000 │      10 │ llama-3.3-70b-versatile (v1) │
+└──────────────┴───────┴─────────┴──────────────────────────────┘
+       Latency (ms)
+┏━━━━━━━━━━━━┳━━━━━┳━━━━━┓
+┃ Stage      ┃ p50 ┃ p95 ┃
+┡━━━━━━━━━━━━╇━━━━━╇━━━━━┩
+│ generation │ 378 │ 891 │
+│ retrieval  │   0 │   0 │
+└────────────┴─────┴─────┘
+pipeline tokens: {'input_tokens': 1410, 'output_tokens': 184}  |
+judge tokens: {'input_tokens': 4338, 'output_tokens': 274}  |  cache: 0 hits / 26 misses
 ```
+
+On re-run, unchanged answers are judged from cache (23/26 hits above — the misses were answers the pipeline re-phrased, which correctly re-judge).
 
 ## Why another RAG eval tool?
 
@@ -69,6 +81,7 @@ Then `ragcheck run config.yaml`. Every LLM judgment is cached in SQLite (keyed o
 | `hit_rate@k` (deterministic) | ✅ done |
 | `faithfulness` (claim decomposition + verification, LLM-judged) | ✅ done |
 | SQLite judgment cache + prompt versioning | ✅ done |
+| Judge providers: Anthropic (Claude) + Groq (open-weight Llama) | ✅ done |
 | CLI (`ragcheck run`) + JSON report + terminal scorecard | ✅ done |
 | MRR, context precision/recall, answer relevance, citation accuracy | 🔜 planned |
 | Judge validation (Cohen's kappa vs. human labels) | 🔜 planned |

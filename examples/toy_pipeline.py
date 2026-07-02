@@ -1,6 +1,6 @@
 """Toy RAG pipeline: keyword retrieval over a 10-doc in-memory corpus + Claude generation.
 
-Run from the repo root (requires ANTHROPIC_API_KEY):
+Run from the repo root (requires ANTHROPIC_API_KEY or GROQ_API_KEY):
 
     ragcheck run examples/toy_config.yaml
 """
@@ -11,7 +11,7 @@ import time
 
 from ragcheck.adapters.base import RAGAdapter, RAGResponse, RetrievedChunk
 from ragcheck.adapters.function import FunctionAdapter
-from ragcheck.llm import AnthropicClient
+from ragcheck.llm import default_client
 
 CORPUS: dict[str, str] = {
     "doc_leave": "Acme Analytics employees receive 24 days of paid leave per year, plus 8 public holidays.",
@@ -57,8 +57,8 @@ def retrieve(question: str, k: int = 3) -> list[RetrievedChunk]:
 
 
 def build_adapter() -> RAGAdapter:
-    """Factory used by toy_config.yaml."""
-    llm = AnthropicClient()
+    """Factory used by toy_config.yaml. Uses whichever provider key is in the env."""
+    llm = default_client()
 
     def pipeline(question: str) -> RAGResponse:
         t0 = time.perf_counter()

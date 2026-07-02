@@ -1,13 +1,19 @@
-"""LLM client protocol and the Anthropic implementation."""
+"""LLM client protocol and provider implementations (Anthropic, Groq)."""
 
 from __future__ import annotations
 
+import os
+import random
+import time
 from typing import Protocol
 
 import anthropic
+import httpx
 from pydantic import BaseModel
 
 DEFAULT_JUDGE_MODEL = "claude-opus-4-8"
+DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
 
 class LLMResponse(BaseModel):
@@ -67,3 +73,97 @@ class AnthropicClient:
             output_tokens=response.usage.output_tokens,
             model=response.model,
         )
+
+
+class GroqClient:
+    """LLMClient backed by Groq's OpenAI-compatible chat completions API.
+
+    Serves open-weight models (Llama, etc.). Reads the API key from the
+    ``GROQ_API_KEY`` environment variable. Judged calls run at temperature 0.
+    Retries 429 and 5xx responses with exponential backoff.
+    """
+
+    def __init__(
+        self,
+        model: str = DEFAULT_GROQ_MODEL,
+        max_retries: int = 4,
+        http_client: httpx.Client | None = None,
+    ) -> None:
+        """Create a client for ``model``; ``http_client`` is injectable for tests."""
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            raise RuntimeError("GROQ_API_KEY environment variable is not set")
+        self._http = http_client or httpx.Client(timeout=120.0)
+        self._headers = {"Authorization": f"Bearer {api_key}"}
+        self._max_retries = max_retries
+        self.model = model
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
+
+    def complete(
+        self, prompt: str, *, system: str | None = None, max_tokens: int = 1024
+    ) -> LLMResponse:
+        """Run a single-turn completion against the configured model."""
+        messages: list[dict[str, str]] = []
+        if system is not None:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+        payload = {
+            "model": self.model,
+            "max_tokens": max_tokens,
+            "temperature": 0,
+            "messages": messages,
+        }
+        data = self._post_with_retry(payload)
+        usage = data.get("usage", {})
+        input_tokens = int(usage.get("prompt_tokens", 0))
+        output_tokens = int(usage.get("completion_tokens", 0))
+        self.total_input_tokens += input_tokens
+        self.total_output_tokens += output_tokens
+        return LLMResponse(
+            text=data["choices"][0]["message"]["content"],
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            model=data.get("model", self.model),
+        )
+
+    def _post_with_retry(self, payload: dict) -> dict:
+        last_error: Exception | None = None
+        for attempt in range(self._max_retries + 1):
+            try:
+                response = self._http.post(
+                    f"{GROQ_BASE_URL}/chat/completions", json=payload, headers=self._headers
+                )
+            except httpx.TransportError as exc:
+                last_error = exc
+            else:
+                if response.status_code == 200:
+                    return dict(response.json())
+                if response.status_code not in (429,) and response.status_code < 500:
+                    response.raise_for_status()
+                last_error = httpx.HTTPStatusError(
+                    f"Groq returned {response.status_code}",
+                    request=response.request,
+                    response=response,
+                )
+            if attempt < self._max_retries:
+                time.sleep(min(2**attempt + random.random(), 30.0))
+        raise last_error if last_error else RuntimeError("Groq request failed")
+
+
+def build_client(provider: str, model: str | None = None) -> LLMClient:
+    """Instantiate an LLMClient by provider name (``anthropic`` or ``groq``)."""
+    if provider == "anthropic":
+        return AnthropicClient(model=model or DEFAULT_JUDGE_MODEL)
+    if provider == "groq":
+        return GroqClient(model=model or DEFAULT_GROQ_MODEL)
+    raise ValueError(f"Unknown LLM provider {provider!r} (use 'anthropic' or 'groq')")
+
+
+def default_client(model: str | None = None) -> LLMClient:
+    """Pick a provider from the environment: Anthropic if its key is set, else Groq."""
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return build_client("anthropic", model)
+    if os.environ.get("GROQ_API_KEY"):
+        return build_client("groq", model)
+    raise RuntimeError("Set ANTHROPIC_API_KEY or GROQ_API_KEY to use LLM-backed components")

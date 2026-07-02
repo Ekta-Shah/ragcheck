@@ -7,8 +7,6 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field, field_validator
 
-from ragcheck.llm import DEFAULT_JUDGE_MODEL
-
 
 class MetricSpec(BaseModel):
     """A metric selection with optional constructor params."""
@@ -23,7 +21,8 @@ class EvalConfig(BaseModel):
     dataset: Path
     adapter: str
     metrics: list[MetricSpec]
-    judge_model: str = DEFAULT_JUDGE_MODEL
+    judge_provider: str = "anthropic"
+    judge_model: str | None = None
     output_dir: Path = Path("ragcheck_output")
     cache_path: Path = Path(".ragcheck_cache.sqlite")
     run_name: str | None = None

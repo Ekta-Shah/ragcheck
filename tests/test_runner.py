@@ -66,7 +66,7 @@ def test_run_eval_with_judged_metric_uses_cache(tmp_path, monkeypatch):
         {"The sky is blue.": ["The sky is blue"]}, supported={"The sky is blue"}
     )
     monkeypatch.setattr(
-        "ragcheck.runner.AnthropicClient", lambda model: MockLLMClient(responder)
+        "ragcheck.runner.build_client", lambda provider, model: MockLLMClient(responder)
     )
     config = make_config(tmp_path, [MetricSpec(name="faithfulness")])
 

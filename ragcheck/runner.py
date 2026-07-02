@@ -14,7 +14,7 @@ from ragcheck.config import EvalConfig
 from ragcheck.datasets.loaders import load_dataset
 from ragcheck.datasets.models import EvalSample
 from ragcheck.judge.judge import Judge
-from ragcheck.llm import AnthropicClient
+from ragcheck.llm import LLMClient, build_client
 from ragcheck.metrics import _LLM_JUDGED, build_metric
 from ragcheck.report.models import EvalReport, LatencySummary, percentile
 
@@ -56,11 +56,11 @@ def run_eval(config: EvalConfig) -> tuple[EvalReport, Path]:
     needs_judge = any(spec.name in _LLM_JUDGED for spec in config.metrics)
     cache: JudgmentCache | None = None
     judge: Judge | None = None
-    llm: AnthropicClient | None = None
+    llm: LLMClient | None = None
     if needs_judge:
         config.cache_path.parent.mkdir(parents=True, exist_ok=True)
         cache = JudgmentCache(config.cache_path)
-        llm = AnthropicClient(model=config.judge_model)
+        llm = build_client(config.judge_provider, config.judge_model)
         judge = Judge(llm, cache)
 
     results = [
@@ -87,7 +87,10 @@ def run_eval(config: EvalConfig) -> tuple[EvalReport, Path]:
         ],
         pipeline_token_usage=dict(pipeline_tokens),
         judge_token_usage=(
-            {"input_tokens": llm.total_input_tokens, "output_tokens": llm.total_output_tokens}
+            {
+                "input_tokens": getattr(llm, "total_input_tokens", 0),
+                "output_tokens": getattr(llm, "total_output_tokens", 0),
+            }
             if llm
             else {}
         ),
