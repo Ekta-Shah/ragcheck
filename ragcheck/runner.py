@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -16,7 +17,10 @@ from ragcheck.datasets.models import EvalDataset, EvalSample
 from ragcheck.judge.judge import Judge
 from ragcheck.llm import LLMClient, build_client
 from ragcheck.metrics import _LLM_JUDGED, build_metric
-from ragcheck.report.models import EvalReport, LatencySummary, percentile
+from ragcheck.report.html import render_html
+from ragcheck.report.models import EvalReport, LatencySummary, ReportSample, percentile
+
+CONTEXT_SNIPPET_CHARS = 500
 
 
 def load_adapter(spec: str) -> RAGAdapter:
@@ -61,6 +65,18 @@ def evaluate(
     ``config.dataset``/``config.adapter`` are ignored here; the caller supplies
     both objects directly. Used by benchmarks and library consumers.
     """
+    needs_confirm = (
+        len(dataset.pairs) > config.confirm_above
+        and any(spec.name in _LLM_JUDGED for spec in config.metrics)
+        and not config.assume_yes
+    )
+    if needs_confirm:
+        judged = sum(1 for spec in config.metrics if spec.name in _LLM_JUDGED)
+        raise RuntimeError(
+            f"This run judges {len(dataset.pairs)} samples across {judged} LLM metrics "
+            f"(> confirm_above={config.confirm_above}). Estimated multiple LLM calls per "
+            "sample per metric. Re-run with --yes (or set assume_yes/confirm_above in config)."
+        )
     responses = adapter.batch_query([qa.question for qa in dataset.pairs])
     samples = [
         EvalSample(qa=qa, response=r)
@@ -92,6 +108,30 @@ def evaluate(
         for stage, ms in response.latencies_ms.items():
             stage_latencies[stage].append(ms)
 
+    report_samples = [
+        ReportSample(
+            question=s.qa.question,
+            answer=s.response.answer,
+            refused=s.response.refused,
+            answerable=s.qa.answerable,
+            difficulty=s.qa.difficulty,
+            contexts=[
+                f"[{c.source_id}] {c.content[:CONTEXT_SNIPPET_CHARS]}"
+                for c in s.response.retrieved_chunks
+            ],
+            scores={
+                r.metric_name: (v if v == v else None)
+                for r in results
+                for v in (r.per_sample_scores[i],)
+            },
+        )
+        for i, s in enumerate(samples)
+    ]
+
+    judge_validation: dict | None = None
+    if config.judge_validation and Path(config.judge_validation).exists():
+        judge_validation = json.loads(Path(config.judge_validation).read_text())
+
     report = EvalReport(
         run_name=config.run_name or f"run-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}",
         dataset=dataset.name,
@@ -112,6 +152,8 @@ def evaluate(
             else {}
         ),
         cache_stats={"hits": cache.hits, "misses": cache.misses} if cache else {},
+        samples=report_samples,
+        judge_validation=judge_validation,
     )
     if cache is not None:
         cache.close()
@@ -119,4 +161,6 @@ def evaluate(
     config.output_dir.mkdir(parents=True, exist_ok=True)
     out_path = config.output_dir / f"{report.run_name}.json"
     out_path.write_text(report.model_dump_json(indent=2))
+    if config.html:
+        (config.output_dir / f"{report.run_name}.html").write_text(render_html(report))
     return report, out_path

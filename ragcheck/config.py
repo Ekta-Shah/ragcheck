@@ -24,6 +24,10 @@ class EvalConfig(BaseModel):
     judge_provider: str = "anthropic"
     judge_model: str | None = None
     concurrency: int = 4
+    html: bool = True
+    judge_validation: Path | None = None  # embed this validation report, if present
+    confirm_above: int = 200  # LLM-judged runs larger than this need assume_yes
+    assume_yes: bool = False
     output_dir: Path = Path("ragcheck_output")
     cache_path: Path = Path(".ragcheck_cache.sqlite")
     run_name: str | None = None

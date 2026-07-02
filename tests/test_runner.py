@@ -85,3 +85,35 @@ def test_unknown_metric_raises(tmp_path):
     config = make_config(tmp_path, [MetricSpec(name="nope")])
     with pytest.raises(ValueError, match="Unknown metric"):
         run_eval(config)
+
+
+def test_report_embeds_samples_and_html(tmp_path):
+    config = make_config(tmp_path, [MetricSpec(name="hit_rate", params={"k": 1})])
+    report, out_path = run_eval(config)
+    assert len(report.samples) == 2
+    assert report.samples[0].question == "What color is the sky?"
+    assert report.samples[0].scores == {"hit_rate@1": 1.0}
+    html_path = out_path.with_suffix(".html")
+    assert html_path.exists()
+    assert "RAGCheck report" in html_path.read_text()
+
+
+def test_cost_guard_blocks_large_judged_runs(tmp_path, monkeypatch):
+    responder = faithfulness_responder({}, supported=set())
+    monkeypatch.setattr(
+        "ragcheck.runner.build_client", lambda provider, model: MockLLMClient(responder)
+    )
+    config = make_config(tmp_path, [MetricSpec(name="faithfulness")])
+    config.confirm_above = 1  # dataset has 2 samples
+    with pytest.raises(RuntimeError, match="--yes"):
+        run_eval(config)
+    config.assume_yes = True
+    report, _ = run_eval(config)  # proceeds when confirmed
+    assert report.n_samples == 2
+
+
+def test_cost_guard_ignores_deterministic_runs(tmp_path):
+    config = make_config(tmp_path, [MetricSpec(name="hit_rate", params={"k": 1})])
+    config.confirm_above = 1
+    report, _ = run_eval(config)  # no judged metrics -> no confirmation needed
+    assert report.n_samples == 2
