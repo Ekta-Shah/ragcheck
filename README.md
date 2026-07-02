@@ -41,6 +41,17 @@ Existing tools score your pipeline with an LLM judge and stop there. RAGCheck is
 - **What does quality cost?** Cost-quality frontier across pipeline configurations.
 - **Did this PR make it worse?** Report diffing with thresholds and non-zero exit codes for CI.
 
+## Early benchmark result
+
+Same corpus (3 SEC 10-Ks), same chunking, same generator — only retrieval varies:
+
+| Pipeline | hit_rate@5 | faithfulness | tokens/query |
+|---|---:|---:|---:|
+| naive (dense) | 0.438 | 1.000 | 1666 |
+| hybrid (BM25 + dense, RRF) | **0.750** | 0.948 | 1555 |
+
+16 samples — directional, not definitive. Methodology, reproduction commands, and honest limitations in [benchmarks/](benchmarks/README.md).
+
 ## How it works
 
 Wrap any pipeline in a `RAGAdapter` (or just a function):
@@ -82,12 +93,13 @@ Then `ragcheck run config.yaml`. Every LLM judgment is cached in SQLite (keyed o
 | `faithfulness` (claim decomposition + verification, LLM-judged) | ✅ done |
 | SQLite judgment cache + prompt versioning | ✅ done |
 | Judge providers: Anthropic (Claude) + Groq (open-weight Llama) | ✅ done |
+| Early architecture benchmark: naive vs. hybrid RAG on SEC 10-Ks ([results](benchmarks/README.md)) | ✅ rough cut |
 | CLI (`ragcheck run`) + JSON report + terminal scorecard | ✅ done |
 | MRR, context precision/recall, answer relevance, citation accuracy | 🔜 planned |
 | Judge validation (Cohen's kappa vs. human labels) | 🔜 planned |
 | Refusal calibration + paraphrase consistency | 🔜 planned |
 | Synthetic dataset generation from any corpus | 🔜 planned |
-| Architecture benchmark: naive vs. hybrid vs. reranked vs. agentic RAG | 🔜 planned |
+| Full benchmark: + reranked & agentic RAG, 300-500 samples, cost-quality frontier | 🔜 planned |
 | HTML report, regression diffing, PyPI release | 🔜 planned |
 
 ## Development

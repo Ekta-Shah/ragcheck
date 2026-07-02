@@ -10,4 +10,5 @@ build/
 *.sqlite
 ragcheck_output/
 benchmarks/corpus/data/
+benchmarks/results/
 .DS_Store

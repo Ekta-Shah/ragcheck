@@ -43,6 +43,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.ruff.lint.per-file-ignores]
 "ragcheck/cli.py" = ["B008"]   # typer.Argument in defaults is the typer idiom
 "examples/*" = ["E501"]        # corpus/prompt strings read better unwrapped
+"benchmarks/*" = ["E501"]      # prompt strings read better unwrapped
 
 [tool.mypy]
 python_version = "3.10"
