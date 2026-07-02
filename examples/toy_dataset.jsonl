@@ -1,0 +1,10 @@
+{"question": "How many days of paid leave do employees get per year?", "ground_truth_answer": "24 days plus 8 public holidays", "relevant_source_ids": ["doc_leave"], "difficulty": "easy"}
+{"question": "How many days per week can I work remotely?", "ground_truth_answer": "Up to 3 days per week", "relevant_source_ids": ["doc_wfh"], "difficulty": "easy"}
+{"question": "What is the deadline for filing expense claims?", "ground_truth_answer": "Within 30 days", "relevant_source_ids": ["doc_expense"], "difficulty": "easy"}
+{"question": "Which laptops can new joiners choose from?", "ground_truth_answer": "MacBook Air M3 or ThinkPad X1 Carbon", "relevant_source_ids": ["doc_laptop"], "difficulty": "easy"}
+{"question": "Who is covered under the health insurance policy?", "ground_truth_answer": "Employees, spouses, and up to two children", "relevant_source_ids": ["doc_insurance"], "difficulty": "easy"}
+{"question": "How long is the probation period and what happens after it?", "ground_truth_answer": "90 days, followed by a confirmation review", "relevant_source_ids": ["doc_probation"], "difficulty": "medium"}
+{"question": "When is the referral bonus paid out?", "ground_truth_answer": "After the referred hire completes probation", "relevant_source_ids": ["doc_referral"], "difficulty": "medium"}
+{"question": "What is the annual learning budget per employee?", "ground_truth_answer": "INR 40,000", "relevant_source_ids": ["doc_learning"], "difficulty": "easy"}
+{"question": "What is the notice period for client-facing staff?", "ground_truth_answer": "60 days, with garden leave", "relevant_source_ids": ["doc_notice"], "difficulty": "medium"}
+{"question": "What is the company's parental leave policy?", "ground_truth_answer": null, "relevant_source_ids": [], "answerable": false, "difficulty": "medium"}

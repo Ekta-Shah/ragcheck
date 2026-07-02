@@ -1,0 +1,10 @@
+dataset: toy_dataset.jsonl
+adapter: examples.toy_pipeline:build_adapter
+metrics:
+  - name: hit_rate
+    params: { k: 3 }
+  - faithfulness
+judge_model: claude-opus-4-8
+output_dir: ../ragcheck_output
+cache_path: ../.ragcheck_cache.sqlite
+run_name: toy-demo
