@@ -1,0 +1,59 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ragcheck"
+version = "0.0.1"
+description = "pytest for RAG systems - evaluate retrieval-augmented generation pipelines"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Ekta Shah" }]
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic>=0.40",
+    "pydantic>=2.5",
+    "typer>=0.12",
+    "rich>=13.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "types-PyYAML",
+]
+
+[project.scripts]
+ragcheck = "ragcheck.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ragcheck"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"ragcheck/cli.py" = ["B008"]   # typer.Argument in defaults is the typer idiom
+"examples/*" = ["E501"]        # corpus/prompt strings read better unwrapped
+
+[tool.mypy]
+python_version = "3.10"
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
