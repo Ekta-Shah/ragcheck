@@ -28,6 +28,8 @@ from hybrid_rag import HybridRAG  # noqa: E402
 from naive_rag import NaiveRAG  # noqa: E402
 from reranked_rag import RerankedRAG  # noqa: E402
 
+from ragcheck.adapters.base import RAGAdapter, RAGResponse  # noqa: E402
+from ragcheck.cache import JudgmentCache, make_key  # noqa: E402
 from ragcheck.config import EvalConfig, MetricSpec  # noqa: E402
 from ragcheck.datasets.loaders import load_dataset  # noqa: E402
 from ragcheck.datasets.models import EvalDataset, QAPair  # noqa: E402
@@ -64,6 +66,31 @@ PRICING = {
     "llama-3.3-70b-versatile": (0.59, 0.79),
     "llama-3.1-8b-instant": (0.05, 0.08),
 }
+
+
+class CachedPipeline(RAGAdapter):
+    """Cache pipeline responses so interrupted runs resume without re-generating.
+
+    Keyed on (pipeline, generator model, question). Cached responses keep
+    their original token_usage/latencies - they represent the pipeline's
+    intrinsic cost, which is what the comparison reports. Stable answers
+    across resumes also keep judge-cache hits intact.
+    """
+
+    def __init__(self, inner: RAGAdapter, cache: JudgmentCache, model_tag: str) -> None:
+        self.inner = inner
+        self.cache = cache
+        self.model_tag = model_tag
+        self.name = getattr(inner, "name", type(inner).__name__)
+
+    def query(self, question: str) -> RAGResponse:
+        key = make_key("pipeline_response", self.name, self.model_tag, question)
+        cached = self.cache.get(key)
+        if cached is not None:
+            return RAGResponse.model_validate_json(cached)
+        response = self.inner.query(question)
+        self.cache.set(key, response.model_dump_json())
+        return response
 
 
 def quick_subset(pairs: list[QAPair], n: int) -> list[QAPair]:
@@ -152,10 +179,15 @@ def run(
     dense = DenseIndex(chunks)  # shared embeddings across all pipelines
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    response_cache = JudgmentCache(RESULTS_DIR / "response_cache.sqlite")
     rows: list[dict] = []
     for name in pipeline_names:
         console.print(f"\n[bold]Evaluating {name}...[/bold]")
-        pipeline = PIPELINES[name](chunks, llm, dense=dense)
+        pipeline = CachedPipeline(
+            PIPELINES[name](chunks, llm, dense=dense),
+            response_cache,
+            gen_model or getattr(llm, "model", "default"),
+        )
         config = EvalConfig(
             dataset=dataset_path,
             adapter=name,
@@ -168,7 +200,10 @@ def run(
             run_name=name,
         )
         report, path = evaluate(pipeline, dataset, config, adapter_name=name)
-        console.print(f"  report: {path}")
+        console.print(
+            f"  report: {path}  [dim](responses: {response_cache.hits} cached / "
+            f"{response_cache.misses} fresh)[/dim]"
+        )
         effective_model = getattr(llm, "model", gen_model or "unknown")
         rows.append(
             {
