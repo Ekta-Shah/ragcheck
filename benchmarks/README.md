@@ -2,7 +2,7 @@
 
 Reproducible comparison of RAG retrieval architectures on a financial-filings corpus. Everything except the retrieval strategy is held constant: same chunking (1200 chars, 200 overlap), same embedding model (`all-MiniLM-L6-v2`), same generator model and prompt.
 
-> **Status: harness complete, full run pending.** All 4 pipelines and the full 9-metric suite run end-to-end (validated on a small subset). The headline full run (300-500 samples across difficulty tiers, unanswerables, paraphrase groups) needs a funded API budget and will replace the early results below.
+> **Status: preliminary results below (12 samples, free-tier run).** All 4 pipelines and the metric suite run end-to-end. The full run (300-500 samples) needs a funded API budget and will replace these numbers; at n=12, differences under ~0.2 are noise.
 
 ## Pipelines
 
@@ -33,6 +33,24 @@ python benchmarks/run_benchmark.py                          # full; --quick for 
 ```
 
 Outputs land in `benchmarks/results/`: per-pipeline JSON reports, `comparison.json`/`comparison.md`, and `cost_quality_frontier.png` (cost/query vs. faithfulness). `--pipelines`, `--metrics`, and `--n` subset a run for cheap smoke tests.
+
+## Preliminary results (4 pipelines, 12 stratified samples, 2026-07-06)
+
+Generator + judge: `meta-llama/llama-4-scout-17b-16e-instruct`. Samples include 2 unanswerable questions and one full paraphrase group. Chunk-level judged metrics (context precision/recall, citation accuracy) were excluded from this budget-constrained run.
+
+| Pipeline | hit_rate@5 | mrr | faithfulness | answer_relevance | refusal_calibration | paraphrase_consistency | tok/q | $/q | retrieval p50 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| naive_rag | 0.500 | 0.450 | 0.950 | 0.917 | 0.583 | 0.700 | 1535 | $0.00018 | 43 ms |
+| hybrid_rag | 0.400 | 0.245 | 0.958 | 0.938 | 0.500 | **1.000** | 1448 | $0.00017 | 75 ms |
+| reranked_rag | 0.500 | 0.183 | 0.958 | 0.917 | 0.500 | **1.000** | 1511 | $0.00018 | 359 ms |
+| agentic_rag | 0.500 | 0.450 | 0.958 | 0.854 | **0.750** | 0.450 | 2683 | $0.00032 | 6602 ms |
+
+![Cost-quality frontier](cost_quality_frontier.png)
+
+**Preliminary reads (all within noise at this sample size, offered as hypotheses for the full run):**
+- **Agentic RAG is the refusal-calibration leader but the consistency laggard** - its multi-round retrieval gathers enough to decline unanswerables more often (0.75 vs 0.50-0.58), but different decompositions per paraphrase produce different answers (0.45 consistency). It also costs 1.75x tokens/query and ~90x retrieval latency.
+- **Hybrid and reranked are perfectly paraphrase-consistent** on this subset - stabler retrieval under rephrasing.
+- **Faithfulness is uniformly high (~0.95)** across architectures: the shared generator rarely asserts beyond its context; retrieval quality, robustness, and cost are where architectures actually differ.
 
 ## Early results (2 pipelines, 16 samples, 2026-07-02)
 

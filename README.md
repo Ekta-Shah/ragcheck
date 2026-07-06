@@ -7,7 +7,15 @@
 **pytest for RAG systems.** Wrap your retrieval-augmented generation pipeline in a one-method adapter and get quality scores, a failure taxonomy, cost/latency profiles, and CI-friendly regression checks — with a judge you can actually verify.
 
 ```bash
-pip install ragcheck-eval            # imports and CLI are `ragcheck`
+pip install ragcheck-eval   # imports and CLI are `ragcheck`
+ragcheck demo               # no API key needed - see the whole workflow in 10 seconds
+```
+
+The demo runs a canned pipeline with two planted failures — faithfulness catches the hallucinated claim, refusal calibration flags the invented answer to an unanswerable question, and the HTML report shows both with their retrieved contexts. ([Or open the quickstart in Colab.](https://colab.research.google.com/github/Ekta-Shah/ragcheck/blob/main/examples/quickstart.ipynb))
+
+For real runs:
+
+```bash
 export ANTHROPIC_API_KEY=sk-ant-...  # or GROQ_API_KEY for open-weight judges
 ragcheck run examples/toy_config.yaml
 ```
@@ -78,14 +86,16 @@ Point a YAML config at your adapter, dataset, and metrics, then `ragcheck run co
 
 ## Benchmark: which RAG architecture?
 
-Four pipelines — naive dense, hybrid (BM25+dense RRF), cross-encoder reranked, and agentic (query decomposition) — on 8 SEC 10-K filings, identical chunking/generator, retrieval as the only variable. Early 16-sample result (full 300-500 sample run landing shortly):
+Four pipelines — naive dense, hybrid (BM25+dense RRF), cross-encoder reranked, and agentic (query decomposition) — on 8 SEC 10-K filings, identical chunking/generator, retrieval as the only variable. Preliminary 12-sample free-tier run (differences under ~0.2 are noise; full 300-500 sample run pending):
 
-| Pipeline | hit_rate@5 | faithfulness | tokens/query |
-|---|---:|---:|---:|
-| naive (dense) | 0.438 | 1.000 | 1666 |
-| hybrid (BM25 + dense, RRF) | **0.750** | 0.948 | 1555 |
+| Pipeline | faithfulness | refusal_calibration | paraphrase_consistency | tok/q | retrieval p50 |
+|---|---:|---:|---:|---:|---:|
+| naive (dense) | 0.950 | 0.583 | 0.700 | 1535 | 43 ms |
+| hybrid (BM25+dense RRF) | 0.958 | 0.500 | **1.000** | 1448 | 75 ms |
+| reranked (cross-encoder) | 0.958 | 0.500 | **1.000** | 1511 | 359 ms |
+| agentic (decomposition) | 0.958 | **0.750** | 0.450 | 2683 | 6602 ms |
 
-Methodology, reproduction commands, and honest limitations: [benchmarks/](benchmarks/README.md).
+Early hypothesis worth noticing: agentic RAG refuses unanswerables best but answers paraphrases least consistently, at 1.75× the cost — exactly the trade-offs single-metric evals miss. Methodology, frontier chart, and honest limitations: [benchmarks/](benchmarks/README.md).
 
 ## Design decisions
 
@@ -103,6 +113,7 @@ Methodology, reproduction commands, and honest limitations: [benchmarks/](benchm
 
 | Area | Status |
 |---|---|
+| Zero-key demo (`ragcheck demo`) + Colab quickstart notebook | ✅ |
 | Adapters: `FunctionAdapter`, `LangChainAdapter` | ✅ |
 | 9 metrics: retrieval (4) · generation (3) · robustness (2) | ✅ |
 | Judge validation (`validate-judge`, Cohen's κ) | ✅ |
@@ -111,7 +122,8 @@ Methodology, reproduction commands, and honest limitations: [benchmarks/](benchm
 | Regression diffing (`compare --fail-if`) | ✅ |
 | CI workflows (lint/type/test + env-gated live smoke eval) | ✅ |
 | 4-architecture benchmark harness | ✅ |
-| Full benchmark run (300-500 samples) | 🔜 imminent |
+| 4-pipeline benchmark: preliminary 12-sample results | ✅ |
+| Full benchmark run (300-500 samples) | 🔜 needs funded API budget |
 | PyPI release (`ragcheck-eval` 0.1.0) | 🔜 with benchmark results |
 | LlamaIndex/Haystack adapters | ❌ not in v0.1 (issues welcome) |
 
