@@ -61,7 +61,7 @@ ragcheck generate-dataset ./my_docs --n 100 --out eval_set.jsonl
 ragcheck run eval.yaml
 ```
 
-You get a terminal scorecard, a JSON report, and a self-contained HTML report (open it in any browser — worst-failing samples included). Re-runs are cheap: every judgment is cached in SQLite.
+You get a terminal scorecard, a JSON report, and a self-contained HTML report (open it in any browser - worst-failing samples included). Re-runs are cheap: every judgment is cached in SQLite.
 
 ## 5. Trust, then automate
 

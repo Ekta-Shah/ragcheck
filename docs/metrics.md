@@ -7,7 +7,7 @@ Every metric returns a 0.0-1.0 score plus per-sample scores. LLM-judged results 
 ### `hit_rate@k` (deterministic)
 **What:** fraction of questions where any chunk in the top-k retrieved has a `source_id` in the question's `relevant_source_ids`.
 **Needs:** labeled `relevant_source_ids`.
-**Limitations:** counts only labeled chunks as relevant — a retrieved duplicate passage containing the same fact scores as a miss.
+**Limitations:** counts only labeled chunks as relevant - a retrieved duplicate passage containing the same fact scores as a miss.
 
 ### `mrr` (deterministic)
 **What:** mean reciprocal rank of the first relevant chunk (1/rank; 0 if absent).
@@ -26,8 +26,8 @@ Every metric returns a 0.0-1.0 score plus per-sample scores. LLM-judged results 
 ## Generation
 
 ### `faithfulness` (LLM-judged)
-**What:** answer decomposed into atomic claims; each verified against retrieved context; score = supported/total. Claim-free answers (e.g. refusals) score 1.0 — nothing unfaithful to penalize.
-**Limitations:** read together with retrieval metrics — a pipeline that retrieves nothing and says "I don't know" is perfectly faithful. Unsupported-but-true claims (from parametric knowledge) still count as unfaithful; that is intentional.
+**What:** answer decomposed into atomic claims; each verified against retrieved context; score = supported/total. Claim-free answers (e.g. refusals) score 1.0 - nothing unfaithful to penalize.
+**Limitations:** read together with retrieval metrics - a pipeline that retrieves nothing and says "I don't know" is perfectly faithful. Unsupported-but-true claims (from parametric knowledge) still count as unfaithful; that is intentional.
 
 ### `answer_relevance` (LLM-judged)
 **What:** 1-5 rubric of how directly the answer addresses the question, normalized to 0-1. Justified refusals are instructed to score 5.
@@ -46,7 +46,7 @@ Every metric returns a 0.0-1.0 score plus per-sample scores. LLM-judged results 
 ### `paraphrase_consistency` (LLM-judged)
 **What:** pairwise semantic-equivalence of answers within each `paraphrase_group`; group score = fraction of equivalent pairs; metric = mean over groups.
 **Needs:** paraphrase groups in the dataset (`generate-dataset` produces 5-way groups).
-**Limitations:** two consistently *wrong* answers count as consistent — pair with faithfulness.
+**Limitations:** two consistently *wrong* answers count as consistent - pair with faithfulness.
 
 ## Reading scores together
 

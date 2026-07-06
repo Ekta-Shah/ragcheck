@@ -10,8 +10,8 @@ Reproducible comparison of RAG retrieval architectures on a financial-filings co
 |---|---|
 | `naive_rag` | Dense (MiniLM cosine) top-5 |
 | `hybrid_rag` | BM25 + dense top-20 each, reciprocal rank fusion (k=60), top-5 |
-| `reranked_rag` | Dense top-20 → cross-encoder (`ms-marco-MiniLM-L-6-v2`) rerank → top-5 |
-| `agentic_rag` | LLM query decomposition → iterative dense retrieval (max 3 rounds) → synthesis |
+| `reranked_rag` | Dense top-20 -> cross-encoder (`ms-marco-MiniLM-L-6-v2`) rerank -> top-5 |
+| `agentic_rag` | LLM query decomposition -> iterative dense retrieval (max 3 rounds) -> synthesis |
 
 All four share the same chunking, embeddings, generator model, and generation prompt (which requires `[source_id]` citations) - the retrieval strategy is the only variable. Agentic's decomposition/sufficiency LLM calls are charged to its cost per query. Generator/judge models are selected with `RAGCHECK_BENCH_MODEL` / `RAGCHECK_JUDGE_MODEL`.
 
@@ -59,7 +59,7 @@ Generator + judge: `meta-llama/llama-4-scout-17b-16e-instruct`. Samples include 
 | `naive_rag` (dense) | 0.438 | 1.000 | 1666 | 40 |
 | `hybrid_rag` (BM25 + dense, RRF) | **0.750** | 0.948 | 1555 | 47 |
 
-**Read:** on 10-K filings — dense-heavy with exact figures, entity names, and legal terms — adding BM25 lexical matching via reciprocal rank fusion lifts hit_rate@5 from 0.44 to 0.75 for ~7 ms extra retrieval latency. Both pipelines stay highly faithful *to what they retrieve*; the naive pipeline's perfect faithfulness with poor retrieval illustrates why retrieval and generation metrics must be read together (a pipeline can faithfully report that the answer isn't in its badly-retrieved context).
+**Read:** on 10-K filings - dense-heavy with exact figures, entity names, and legal terms - adding BM25 lexical matching via reciprocal rank fusion lifts hit_rate@5 from 0.44 to 0.75 for ~7 ms extra retrieval latency. Both pipelines stay highly faithful *to what they retrieve*; the naive pipeline's perfect faithfulness with poor retrieval illustrates why retrieval and generation metrics must be read together (a pipeline can faithfully report that the answer isn't in its badly-retrieved context).
 
 ## Honest limitations
 

@@ -26,12 +26,12 @@ Output: agreement rate, **Cohen's kappa**, and the confusion matrix (judge vs. h
 
 | kappa | Read |
 |---|---|
-| ≥ 0.8 | strong agreement — judged scores are trustworthy |
+| >= 0.8 | strong agreement - judged scores are trustworthy |
 | 0.6-0.8 | usable, but inspect the confusion matrix for asymmetric errors |
-| 0.4-0.6 | weak — tune the threshold/prompt/model before trusting |
+| 0.4-0.6 | weak - tune the threshold/prompt/model before trusting |
 | < 0.4 | do not trust this judge for this metric |
 
-**The threshold matters as much as the judge.** A sample's judge label is `per-sample score >= threshold`. In our own validation, a scout-17B faithfulness judge scored kappa=0.40 at threshold 0.5 (answers mixing one true and one false claim scored 0.5 and passed) and kappa=1.00 at threshold 1.0 — same judge, same verdicts, different operating point. Sweep the threshold before swapping models.
+**The threshold matters as much as the judge.** A sample's judge label is `per-sample score >= threshold`. In our own validation, a scout-17B faithfulness judge scored kappa=0.40 at threshold 0.5 (answers mixing one true and one false claim scored 0.5 and passed) and kappa=1.00 at threshold 1.0 - same judge, same verdicts, different operating point. Sweep the threshold before swapping models.
 
 ## 4. Embed the result in eval reports
 
@@ -41,7 +41,7 @@ Point your eval config at the saved validation report:
 judge_validation: ragcheck_output/judge_validation_faithfulness.json
 ```
 
-The HTML report then displays "validated at kappa=0.XX" alongside the scorecard — and "not validated" otherwise, so unvalidated judged numbers are visibly flagged.
+The HTML report then displays "validated at kappa=0.XX" alongside the scorecard - and "not validated" otherwise, so unvalidated judged numbers are visibly flagged.
 
 ## When to re-validate
 

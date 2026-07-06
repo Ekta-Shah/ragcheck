@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 (2026-07-06)
+
+- Documentation cleanup across README, docs, and package metadata. No code changes.
+
 ## 0.1.0 (2026-07-06)
 
 Initial release. `pip install ragcheck-eval`.

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ragcheck-eval"   # PyPI: `ragcheck` was taken; import + CLI remain `ragcheck`
-version = "0.1.0"
+version = "0.1.1"
 description = "pytest for RAG systems - evaluate retrieval-augmented generation pipelines"
 readme = "README.md"
 license = { file = "LICENSE" }

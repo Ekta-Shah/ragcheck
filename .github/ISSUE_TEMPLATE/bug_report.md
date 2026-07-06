@@ -20,4 +20,4 @@ labels: bug
 - Judge provider/model (if metric-related):
 - Judge prompt version (from the report JSON):
 
-**Report snippet** (if applicable — the relevant `MetricResult` from your report JSON, with `judge_model` and `prompt_version`)
+**Report snippet** (if applicable - the relevant `MetricResult` from your report JSON, with `judge_model` and `prompt_version`)

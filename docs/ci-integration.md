@@ -45,10 +45,10 @@ jobs:
 ## Keeping cost sane in CI
 
 - **Small fixed eval set** (30-100 samples) for PR gates; the full set nightly.
-- **Commit the judgment cache?** No — cache on question/answer/context, so changed answers re-judge anyway. Instead use the runner's SQLite cache within a job via `actions/cache` keyed on the dataset hash if your pipeline is deterministic.
-- **Cost guard:** runs judging more samples than `confirm_above` (default 200) abort without `--yes` — a safety net against accidentally pointing CI at a huge dataset.
+- **Commit the judgment cache?** No - cache on question/answer/context, so changed answers re-judge anyway. Instead use the runner's SQLite cache within a job via `actions/cache` keyed on the dataset hash if your pipeline is deterministic.
+- **Cost guard:** runs judging more samples than `confirm_above` (default 200) abort without `--yes` - a safety net against accidentally pointing CI at a huge dataset.
 - **Baselines:** regenerate `baselines/main.json` on merges to main (see this repo's `smoke-eval.yaml` for a working env-gated example that skips when no API key secret is configured).
 
 ## Judge stability
 
-Pin the judge model and prompt versions in CI (both are recorded in every report). If you upgrade either, regenerate the baseline in the same PR — deltas across different judges are not meaningful.
+Pin the judge model and prompt versions in CI (both are recorded in every report). If you upgrade either, regenerate the baseline in the same PR - deltas across different judges are not meaningful.
