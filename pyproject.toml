@@ -41,12 +41,14 @@ packages = ["ragcheck"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+extend-exclude = ["*.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
 "ragcheck/cli.py" = ["B008"]   # typer.Argument in defaults is the typer idiom
+"ragcheck/demo.py" = ["E501"]  # demo corpus/answer strings read better unwrapped
 "examples/*" = ["E501"]        # corpus/prompt strings read better unwrapped
 "benchmarks/*" = ["E501"]      # prompt strings read better unwrapped
 

@@ -165,6 +165,10 @@ def build_client(provider: str, model: str | None = None) -> LLMClient:
         return AnthropicClient(model=model or DEFAULT_JUDGE_MODEL)
     if provider == "groq":
         return GroqClient(model=model or DEFAULT_GROQ_MODEL)
+    if provider == "offline-demo":  # deterministic stand-in used only by `ragcheck demo`
+        from ragcheck.demo import DemoJudgeClient
+
+        return DemoJudgeClient()
     raise ValueError(f"Unknown LLM provider {provider!r} (use 'anthropic' or 'groq')")
 
 

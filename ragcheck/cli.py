@@ -68,6 +68,53 @@ def compare(
         raise typer.Exit(code=1)
 
 
+@app.command()
+def demo(
+    output: Path = typer.Option(Path("ragcheck_output"), help="Where to write the reports."),
+) -> None:
+    """Run the zero-key demo: canned pipeline, offline judge, full reports in ~5 seconds."""
+    from ragcheck.config import EvalConfig, MetricSpec
+    from ragcheck.demo import DemoPipeline, demo_dataset
+    from ragcheck.runner import evaluate
+
+    console.print(
+        "[bold]RAGCheck demo[/bold] - no API key needed.\n"
+        "[dim]Canned pipeline answers (two deliberately wrong) + a deterministic offline "
+        "judge, so you can see the workflow. Real runs use Claude/Groq judges.[/dim]\n"
+    )
+    config = EvalConfig(
+        dataset=Path("demo"),
+        adapter="ragcheck.demo:DemoPipeline",
+        metrics=[
+            MetricSpec(name="hit_rate", params={"k": 3}),
+            MetricSpec(name="mrr"),
+            MetricSpec(name="faithfulness"),
+            MetricSpec(name="answer_relevance"),
+            MetricSpec(name="refusal_calibration"),
+        ],
+        judge_provider="offline-demo",
+        output_dir=output,
+        cache_path=output / "demo_cache.sqlite",
+        run_name="demo",
+    )
+    report, out_path = evaluate(
+        DemoPipeline(), demo_dataset(), config, adapter_name="demo_pipeline"
+    )
+    print_summary(report, console)
+    faith = next(m for m in report.metrics if m.metric_name == "faithfulness")
+    refusal = next(m for m in report.metrics if m.metric_name == "refusal_calibration")
+    console.print(
+        f"\n[bold]What just happened:[/bold] faithfulness caught the planted hallucination "
+        f"({[c['claim'] for c in faith.details['failed_claims']][:1]}), and refusal "
+        f"calibration flagged the invented answer "
+        f"(false-answer rate: {refusal.details['false_answer_rate']:.2f}).\n"
+        f"[green]Open the HTML report to see the failing samples with their contexts:[/green] "
+        f"{out_path.with_suffix('.html')}\n"
+        "[dim]Next: wrap your own pipeline (docs/quickstart.md) and set "
+        "ANTHROPIC_API_KEY or GROQ_API_KEY for real judging.[/dim]"
+    )
+
+
 @app.command("generate-dataset")
 def generate_dataset_cmd(
     corpus_dir: Path = typer.Argument(..., help="Directory of .txt/.md corpus files."),
