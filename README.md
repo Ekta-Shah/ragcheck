@@ -1,6 +1,7 @@
 # RAGCheck
 
 [![CI](https://github.com/Ekta-Shah/ragcheck/actions/workflows/ci.yaml/badge.svg)](https://github.com/Ekta-Shah/ragcheck/actions/workflows/ci.yaml)
+[![PyPI](https://img.shields.io/pypi/v/ragcheck-eval)](https://pypi.org/project/ragcheck-eval/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 
@@ -124,7 +125,7 @@ Early hypothesis worth noticing: agentic RAG refuses unanswerables best but answ
 | 4-architecture benchmark harness | ✅ |
 | 4-pipeline benchmark: preliminary 12-sample results | ✅ |
 | Full benchmark run (300-500 samples) | 🔜 needs funded API budget |
-| PyPI release (`ragcheck-eval` 0.1.0) | 🔜 with benchmark results |
+| PyPI release ([`ragcheck-eval` 0.1.0](https://pypi.org/project/ragcheck-eval/)) | ✅ |
 | LlamaIndex/Haystack adapters | ❌ not in v0.1 (issues welcome) |
 
 Explicit non-goals: web UI/dashboards, hosted services, fine-tuning or embedding-model evaluation.

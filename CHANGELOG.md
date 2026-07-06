@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-07-06)
 
-Initial release.
+Initial release. `pip install ragcheck-eval`.
 
 - `RAGAdapter` / `FunctionAdapter` / `LangChainAdapter` pipeline wrappers
 - Retrieval metrics: `hit_rate@k`, `mrr`, `context_precision`, `context_recall`
